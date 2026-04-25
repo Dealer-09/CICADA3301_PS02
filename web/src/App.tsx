@@ -459,7 +459,11 @@ function DoneFrame({ name, onBack }: { name: string; onBack: () => void }) {
         Your buddy is ready. Download the app and I'll be right there when you open it.
       </p>
       <div className="fade-up" style={{ animationDelay: "0.28s", opacity: 0, display: "flex", gap: "12px" }}>
-        <button className="niro-btn" style={{ flex: 1 }}>↓ Download App</button>
+       <a href="/niro-installer.exe" download="Niro-Setup.exe" style={{ flex: 1 }}>
+        <button className="niro-btn" style={{ width: "100%" }}>
+          ↓ Download App
+        </button>
+      </a>
         <button className="niro-btn-ghost">Share Niro</button>
       </div>
       <div className="fade-up" style={{ animationDelay: "0.4s", opacity: 0 }}>
@@ -508,11 +512,6 @@ export default function App() {
               onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.38)")}>{item}</span>
           ))}
         </div>
-        <button style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "99px", color: "rgba(255,255,255,0.65)", cursor: "pointer", fontFamily: "'DM Sans'", fontSize: "13px", padding: "10px 20px", transition: "all 0.2s" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.1)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}>
-          Download for Windows
-        </button>
       </nav>
 
       {/* BODY: mascot left, content right */}
