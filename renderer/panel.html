@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perch</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="panel-wrapper">
+    <div id="panel">
+      <!-- Status Bar -->
+      <div id="status-bar"></div>
+
+      <!-- Header -->
+      <div id="header">
+        <div id="header-title">
+          <div class="header-dot"></div>
+          <h1>Perch</h1>
+        </div>
+        <div id="header-actions">
+          <button class="header-btn" id="btn-clear" title="Clear chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <button class="header-btn" id="btn-settings" title="Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+          <button class="header-btn" id="btn-close" title="Close panel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div id="input-area">
+        <div id="input-container">
+          <input type="text" id="chat-input" placeholder="Ask Perch anything..." autocomplete="off" spellcheck="false">
+          <button id="send-btn" title="Send">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+          <button id="stop-btn" class="hidden" title="Stop">■</button>
+        </div>
+      </div>
+
+      <!-- Chat Area -->
+      <div id="chat-area">
+        <div id="empty-state">
+          <div class="empty-icon">🐦</div>
+          <p>Hey! I'm <strong>Perch</strong>, your desktop AI agent.<br>I can open apps, run commands, set timers, and more.</p>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">Quick Tasks</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Task Grid -->
+      <div id="task-area">
+        <div id="task-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-overlay">
+    <div id="settings-modal">
+      <h2>⚙️ Settings</h2>
+      <div class="setting-group">
+        <label>Groq API Key</label>
+        <input type="password" id="settings-api-key" placeholder="gsk_...">
+      </div>
+      <div class="setting-group">
+        <label>Hover Delay (ms)</label>
+        <input type="text" id="settings-hover-delay" placeholder="800">
+      </div>
+      <div class="setting-group">
+        <div class="toggle-row">
+          <label style="margin-bottom: 0;">Launch on Startup</label>
+          <button class="toggle-switch" id="settings-autostart"></button>
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn-danger" id="settings-quit">Quit Perch</button>
+        <button class="btn-secondary" id="settings-cancel">Cancel</button>
+        <button class="btn-primary" id="settings-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>

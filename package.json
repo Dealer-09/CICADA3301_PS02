@@ -1,27 +1,53 @@
 {
-  "name": "quick-tasks",
+  "name": "perch",
   "version": "1.0.0",
-  "description": "A lightweight productivity app for Windows",
+  "description": "Perch — A lightweight Windows desktop AI agent that lives at the top of your screen",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "start": "electron .",
+    "dev": "nodemon --exec electron . --watch main.js --watch preload.js --watch agent.js --watch tools.js --watch renderer",
+    "build": "electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["electron", "ai-agent", "desktop", "windows", "groq"],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "electron": "^30.0.1"
+    "dotenv": "^16.4.5",
+    "electron-store": "^8.2.0",
+    "groq-sdk": "^0.5.0",
+    "node-notifier": "^10.0.1",
+    "screenshot-desktop": "^1.15.0",
+    "uuid": "^9.0.1"
+  },
+  "optionalDependencies": {
+    "@jitsi/robotjs": "^0.6.13"
   },
   "devDependencies": {
-    "electron-builder": "^24.13.3"
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3",
+    "nodemon": "^3.1.14"
   },
   "build": {
-    "appId": "com.yourname.quicktasks",
-    "productName": "Quick Tasks",
+    "appId": "com.perch.agent",
+    "productName": "Perch",
+    "files": [
+      "main.js",
+      "preload.js",
+      "agent.js",
+      "tools.js",
+      "renderer/**",
+      "assets/**",
+      ".env"
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

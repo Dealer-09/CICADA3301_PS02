@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld('perch', {
   mouseEnteredPanel: () => ipcRenderer.send('panel:mouseEnter'),
   mouseLeftPanel: () => ipcRenderer.send('panel:mouseLeave'),
 
+  // App lifecycle
+  quitApp: () => ipcRenderer.send('app:quit'),
+
   // Sensor
   sensorHover: () => ipcRenderer.send('sensor:hover'),
 
