@@ -47,15 +47,14 @@
       "preload.cjs",
       "agent.js",
       "tools.js",
+      "local-llm.js",
       "renderer/",
       "assets/",
       "node_modules/",
       ".env"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "build_assets/icon.png",
-      "signing": false
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,

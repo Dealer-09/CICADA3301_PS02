@@ -20,9 +20,10 @@ contextBridge.exposeInMainWorld('niro', {
   setProviderConfig: (cfg) => ipcRenderer.invoke('settings:setProviderConfig', cfg),
   getLlmStatus: () => ipcRenderer.invoke('llm:getStatus'),
 
-  // Chat history
+  // Chat history & Audio
   getChatHistory: () => ipcRenderer.invoke('chat:getHistory'),
   clearChatHistory: () => ipcRenderer.invoke('chat:clear'),
+  transcribeAudio: (buffer) => ipcRenderer.invoke('audio:transcribe', buffer),
 
   // Panel visibility
   showPanel: () => ipcRenderer.send('panel:show'),

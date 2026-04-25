@@ -1,6 +1,9 @@
 import Groq from 'groq-sdk';
 import { executeTool } from './tools.js';
 import { runLocalInference, getModelStatus } from './local-llm.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 // The Groq SDK is just an OpenAI-compatible client.
 // We can point it at any OpenAI-compatible endpoint (Ollama, LiteLLM, etc.)
@@ -538,3 +541,37 @@ export async function runAgent(message, chatHistory, sendEvent) {
     return null;
   }
 }
+
+/**
+ * Transcribe an audio buffer using Groq's Whisper API
+ */
+export async function transcribeAudioBuffer(buffer, apiKey) {
+  if (!apiKey) throw new Error('Groq API key is required for voice commands.');
+  
+  const tempClient = new Groq({ apiKey, baseURL: GROQ_CLOUD_BASE });
+  const tempFilePath = path.join(os.tmpdir(), `niro_audio_${Date.now()}.webm`);
+  
+  // Convert ArrayBuffer/Buffer to a Node Buffer and save
+  fs.writeFileSync(tempFilePath, Buffer.from(buffer));
+  
+  try {
+    const transcription = await tempClient.audio.transcriptions.create({
+      file: fs.createReadStream(tempFilePath),
+      model: "whisper-large-v3",
+      response_format: "text"
+    });
+    return transcription;
+  } catch (error) {
+    console.error('[Niro] Transcription error:', error.message);
+    throw error;
+  } finally {
+    try {
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+      }
+    } catch (e) {
+      console.error('[Niro] Failed to cleanup temp audio file:', e.message);
+    }
+  }
+}
+
