@@ -3,6 +3,7 @@ import { exec, spawn } from 'child_process';
 import { shell, Notification } from 'electron';
 import path from 'path';
 import { promisify } from 'util';
+import * as browserBridge from './tools/browser.js';
 
 const execAsync = promisify(exec);
 
@@ -492,6 +493,24 @@ async function search_files({ query, directory }) {
 }
 
 // ─────────────────────────────────────────────────
+// Tool: run_task — AI-powered Browser Use via Python engine
+// ─────────────────────────────────────────────────
+async function run_task({ task }) {
+  try {
+    if (!browserBridge.isReady()) {
+      return {
+        success: false,
+        result: 'Browser engine is not ready yet. Chrome may still be launching. Try again in a moment.'
+      };
+    }
+    const result = await browserBridge.runTask(task);
+    return { success: true, result: result || 'Browser task completed.' };
+  } catch (err) {
+    return { success: false, result: `Browser task failed: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
 // Tool Router
 // ─────────────────────────────────────────────────
 const TOOL_MAP = {
@@ -505,7 +524,9 @@ const TOOL_MAP = {
   take_screenshot,
   show_notification,
   save_task,
-  // Playwright browser automation
+  // AI-powered Browser Use (real Chrome + Gemini)
+  run_task,
+  // Legacy Playwright browser automation (headless fallback)
   browser_open,
   browser_click,
   browser_type,
