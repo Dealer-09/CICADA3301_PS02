@@ -1,4 +1,4 @@
-// main.js — Perch main process: windows, IPC, agent orchestration
+// main.js — Niro main process: windows, IPC, agent orchestration
 import { app, BrowserWindow, ipcMain, screen, shell, Tray, nativeImage, Notification } from 'electron';
 import path from 'path';
 import { fileURLToPath, URL } from 'url';
@@ -16,6 +16,7 @@ const Store = require('electron-store');
 
 import { initClient, runAgent, stopAgent } from './agent.js';
 import { setStore, setMainWindow } from './tools.js';
+import { initLocalLlm, getModelStatus } from './local-llm.js';
 
 // ─────────────────────────────────────────────────
 // Electron Store
@@ -23,6 +24,10 @@ import { setStore, setMainWindow } from './tools.js';
 const store = new Store({
   defaults: {
     apiKey: process.env.GROQ_API_KEY || '',
+    // Provider: 'groq' (cloud), 'local' (Ollama), or 'local-embedded' (direct node-llama-cpp)
+    provider: 'groq',
+    localBaseUrl: 'http://localhost:11434/v1',
+    localModel: 'llama3',
     tasks: [
       { id: '1', name: 'Chrome',      icon: '🌐', instruction: 'Open Google Chrome' },
       { id: '2', name: 'Notepad',     icon: '📝', instruction: 'Open Notepad' },
@@ -45,24 +50,36 @@ const store = new Store({
 setStore(store);
 
 // ─────────────────────────────────────────────────
-// Initialize Groq Client
+// Initialize API Clients
 // ─────────────────────────────────────────────────
-// Always prefer .env key over stored key (env is source of truth on dev)
-const PLACEHOLDER = 'your-groq-api-key-here';
-const envKey = process.env.GROQ_API_KEY;
-const storedKey = store.get('apiKey');
-const apiKey = (envKey && envKey !== PLACEHOLDER) ? envKey
-             : (storedKey && storedKey !== PLACEHOLDER) ? storedKey
-             : null;
-
-// Keep store in sync with .env key
-if (envKey && envKey !== PLACEHOLDER && storedKey !== envKey) {
-  store.set('apiKey', envKey);
+function initializeApiClients() {
+  const provider = store.get('provider') || 'groq';
+  if (provider === 'local-embedded') {
+    initClient({ provider: 'local-embedded' });
+    // Trigger local LLM init (downloads if needed)
+    const modelsDir = path.join(app.getPath('userData'), 'models');
+    initLocalLlm({
+      modelsDir,
+      onProgress: (status) => {
+        if (panelWindow && !panelWindow.isDestroyed()) {
+          panelWindow.webContents.send('llm:status', status);
+        }
+      }
+    });
+  } else if (provider === 'local') {
+    initClient({
+      provider: 'local',
+      baseUrl: store.get('localBaseUrl') || 'http://localhost:11434/v1',
+      model:   store.get('localModel')   || 'llama3',
+    });
+  } else {
+    const apiKey = store.get('apiKey') || process.env.GROQ_API_KEY;
+    initClient({ provider: 'groq', apiKey });
+  }
 }
 
-if (apiKey) {
-  initClient(apiKey);
-}
+// Initialize API Clients (moved to app.whenReady)
+
 
 // ─────────────────────────────────────────────────
 // Window references
@@ -195,7 +212,7 @@ function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('Perch — Desktop AI Agent');
+  tray.setToolTip('Niro — Desktop AI Agent');
 
   tray.on('click', () => {
     showPanel();
@@ -218,10 +235,13 @@ app.whenReady().then(() => {
       path: process.execPath
     });
   }
+
+  // Initialize API Clients after windows are ready
+  initializeApiClients();
 });
 
 app.on('window-all-closed', () => {
-  // Don't quit — Perch lives in the tray
+  // Don't quit — Niro lives in the tray
 });
 
 // Handle quit button from settings
@@ -366,17 +386,38 @@ ipcMain.handle('settings:set', (event, { key, value }) => {
 
 ipcMain.handle('settings:getApiKey', () => {
   const key = store.get('apiKey') || '';
-  // Mask the key for display
   if (key && key.length > 8) {
     return key.substring(0, 4) + '•'.repeat(key.length - 8) + key.substring(key.length - 4);
   }
   return key ? '••••••••' : '';
 });
 
-ipcMain.handle('settings:setApiKey', (event, key) => {
+ipcMain.handle('settings:setApiKey', (event, { key }) => {
   store.set('apiKey', key);
-  initClient(key);
+  initializeApiClients();
   return true;
+});
+
+// Provider config (Groq cloud vs local Ollama/LiteLLM)
+ipcMain.handle('settings:getProviderConfig', () => {
+  return {
+    provider:     store.get('provider')      || 'groq',
+    localBaseUrl: store.get('localBaseUrl')  || 'http://localhost:11434/v1',
+    localModel:   store.get('localModel')    || 'llama3',
+  };
+});
+
+ipcMain.handle('settings:setProviderConfig', (event, { provider, localBaseUrl, localModel }) => {
+  if (provider)     store.set('provider', provider);
+  if (localBaseUrl) store.set('localBaseUrl', localBaseUrl);
+  if (localModel)   store.set('localModel', localModel);
+  initializeApiClients();
+  return true;
+});
+
+// Local Embedded LLM Status
+ipcMain.handle('llm:getStatus', () => {
+  return getModelStatus();
 });
 
 // ─────────────────────────────────────────────────

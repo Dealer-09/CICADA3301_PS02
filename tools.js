@@ -1,4 +1,4 @@
-// tools.js — All executable tools for Perch agent
+// tools.js — All executable tools for Niro agent
 import { exec, spawn } from 'child_process';
 import { shell, Notification } from 'electron';
 import path from 'path';
@@ -6,13 +6,35 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// ─────────────────────────────────────────────────
+// Playwright browser automation (persistent instance)
+// ─────────────────────────────────────────────────
+let playwrightBrowser = null;
+let playwrightPage = null;
+
+async function getPlaywrightPage() {
+  if (playwrightPage && !playwrightPage.isClosed()) return playwrightPage;
+  const { chromium } = await import('playwright');
+  playwrightBrowser = await chromium.launch({ headless: false });
+  const context = await playwrightBrowser.newContext();
+  playwrightPage = await context.newPage();
+  return playwrightPage;
+}
+
+// Cleanup browser on process exit
+process.on('exit', () => {
+  if (playwrightBrowser) {
+    playwrightBrowser.close().catch(() => {});
+  }
+});
+
 // Try to load robotjs — it's optional (requires native compilation)
 let robot = null;
 try {
   robot = (await import('@jitsi/robotjs')).default;
 } catch (e) {
-  console.warn('[Perch] robotjs not available — type_text, press_key, mouse_click tools disabled.');
-  console.warn('[Perch] Install @jitsi/robotjs if you need keyboard/mouse control.');
+  console.warn('[Niro] robotjs not available — type_text, press_key, mouse_click tools disabled.');
+  console.warn('[Niro] Install @jitsi/robotjs if you need keyboard/mouse control.');
 }
 
 // Active timers storage
@@ -296,6 +318,180 @@ async function save_task({ name, instruction }) {
 }
 
 // ─────────────────────────────────────────────────
+// Tool: browser_open — Navigate Playwright browser to a URL
+// ─────────────────────────────────────────────────
+async function browser_open({ url }) {
+  try {
+    let fullUrl = url;
+    if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+      fullUrl = 'https://' + fullUrl;
+    }
+    const page = await getPlaywrightPage();
+    await page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    const title = await page.title();
+    return { success: true, result: `Opened ${fullUrl} — Page title: "${title}"` };
+  } catch (err) {
+    return { success: false, result: `Browser navigation failed: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: browser_click — Click an element by CSS selector or visible text
+// ─────────────────────────────────────────────────
+async function browser_click({ selector, text }) {
+  try {
+    const page = await getPlaywrightPage();
+    if (text) {
+      await page.getByText(text, { exact: false }).first().click({ timeout: 5000 });
+      return { success: true, result: `Clicked element with text: "${text}"` };
+    } else if (selector) {
+      await page.click(selector, { timeout: 5000 });
+      return { success: true, result: `Clicked element: ${selector}` };
+    }
+    return { success: false, result: 'Provide either "selector" or "text" to click.' };
+  } catch (err) {
+    return { success: false, result: `Click failed: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: browser_type — Type into an input field by selector
+// ─────────────────────────────────────────────────
+async function browser_type({ selector, text, placeholder }) {
+  try {
+    const page = await getPlaywrightPage();
+    if (placeholder) {
+      await page.getByPlaceholder(placeholder).first().fill(text, { timeout: 5000 });
+      return { success: true, result: `Typed "${text.substring(0, 40)}" into field with placeholder "${placeholder}"` };
+    } else if (selector) {
+      await page.fill(selector, text, { timeout: 5000 });
+      return { success: true, result: `Typed "${text.substring(0, 40)}" into ${selector}` };
+    }
+    return { success: false, result: 'Provide either "selector" or "placeholder" to target the input field.' };
+  } catch (err) {
+    return { success: false, result: `Browser type failed: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: browser_read — Read visible text content from the current page
+// ─────────────────────────────────────────────────
+async function browser_read({ selector }) {
+  try {
+    const page = await getPlaywrightPage();
+    let content;
+    if (selector) {
+      content = await page.textContent(selector, { timeout: 5000 });
+    } else {
+      content = await page.textContent('body', { timeout: 5000 });
+    }
+    // Truncate to avoid overwhelming the model
+    const trimmed = (content || '').trim().substring(0, 3000);
+    const title = await page.title();
+    const url = page.url();
+    return { success: true, result: `Page: "${title}" (${url})\n\nContent:\n${trimmed}` };
+  } catch (err) {
+    return { success: false, result: `Browser read failed: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: browser_close — Close the Playwright browser
+// ─────────────────────────────────────────────────
+async function browser_close() {
+  try {
+    if (playwrightBrowser) {
+      await playwrightBrowser.close();
+      playwrightBrowser = null;
+      playwrightPage = null;
+    }
+    return { success: true, result: 'Browser closed.' };
+  } catch (err) {
+    return { success: false, result: `Failed to close browser: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: list_windows — List all visible windows
+// ─────────────────────────────────────────────────
+async function list_windows() {
+  try {
+    const { stdout } = await execAsync(
+      `powershell -NoProfile -Command "Get-Process | Where-Object {$_.MainWindowTitle -ne ''} | Select-Object ProcessName, MainWindowTitle, Id | Format-Table -AutoSize | Out-String -Width 300"`,
+      { timeout: 10000 }
+    );
+    return { success: true, result: stdout.trim().substring(0, 2000) || 'No visible windows found.' };
+  } catch (err) {
+    return { success: false, result: `Failed to list windows: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: focus_window — Bring a window to the front by title
+// ─────────────────────────────────────────────────
+async function focus_window({ title }) {
+  try {
+    const script = `
+      Add-Type @"
+        using System;
+        using System.Runtime.InteropServices;
+        public class WinAPI {
+          [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+          [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        }
+"@
+      $proc = Get-Process | Where-Object { $_.MainWindowTitle -like '*${title.replace(/'/g, "''")}*' } | Select-Object -First 1
+      if ($proc) {
+        [WinAPI]::ShowWindow($proc.MainWindowHandle, 9)
+        [WinAPI]::SetForegroundWindow($proc.MainWindowHandle)
+        "Focused: $($proc.MainWindowTitle)"
+      } else {
+        "No window found matching '${title}'"
+      }
+    `;
+    const { stdout } = await execAsync(
+      `powershell -NoProfile -Command "${script.replace(/"/g, '\\"')}"`,
+      { timeout: 10000 }
+    );
+    return { success: true, result: stdout.trim() };
+  } catch (err) {
+    return { success: false, result: `Failed to focus window: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: close_app — Close a running application by name
+// ─────────────────────────────────────────────────
+async function close_app({ name }) {
+  try {
+    const { stdout } = await execAsync(
+      `powershell -NoProfile -Command "Get-Process -Name '*${name.replace(/'/g, "''")}*' -ErrorAction SilentlyContinue | Stop-Process -Force -PassThru | Select-Object ProcessName"`,
+      { timeout: 10000 }
+    );
+    const result = stdout.trim();
+    return { success: true, result: result ? `Closed: ${result}` : `No process found matching '${name}'` };
+  } catch (err) {
+    return { success: false, result: `Failed to close ${name}: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Tool: search_files — Search for files on disk
+// ─────────────────────────────────────────────────
+async function search_files({ query, directory }) {
+  try {
+    const dir = directory || '$env:USERPROFILE';
+    const { stdout } = await execAsync(
+      `powershell -NoProfile -Command "Get-ChildItem -Path ${dir} -Recurse -Filter '*${query.replace(/'/g, "''")}*' -ErrorAction SilentlyContinue -Depth 4 | Select-Object -First 15 FullName, Length, LastWriteTime | Format-Table -AutoSize | Out-String -Width 300"`,
+      { timeout: 20000 }
+    );
+    return { success: true, result: stdout.trim().substring(0, 2000) || `No files found matching '${query}'` };
+  } catch (err) {
+    return { success: false, result: `Search failed: ${err.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────
 // Tool Router
 // ─────────────────────────────────────────────────
 const TOOL_MAP = {
@@ -309,6 +505,17 @@ const TOOL_MAP = {
   take_screenshot,
   show_notification,
   save_task,
+  // Playwright browser automation
+  browser_open,
+  browser_click,
+  browser_type,
+  browser_read,
+  browser_close,
+  // Windows automation
+  list_windows,
+  focus_window,
+  close_app,
+  search_files,
 };
 
 export async function executeTool(name, args) {
@@ -316,7 +523,7 @@ export async function executeTool(name, args) {
   if (!fn) {
     return { success: false, result: `Unknown tool: ${name}` };
   }
-  console.log(`[Perch] Executing tool: ${name}`, args);
+  console.log(`[Niro] Executing tool: ${name}`, args);
   return await fn(args);
 }
 

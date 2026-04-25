@@ -1,7 +1,7 @@
-// preload.js — Secure contextBridge for Perch
+// preload.js — Secure contextBridge for Niro
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('perch', {
+contextBridge.exposeInMainWorld('niro', {
   // Agent
   runAgent: (message) => ipcRenderer.invoke('agent:run', message),
   stopAgent: () => ipcRenderer.invoke('agent:stop'),
@@ -15,7 +15,10 @@ contextBridge.exposeInMainWorld('perch', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (key, value) => ipcRenderer.invoke('settings:set', { key, value }),
   getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
-  setApiKey: (key) => ipcRenderer.invoke('settings:setApiKey', key),
+  setApiKey: (args) => ipcRenderer.invoke('settings:setApiKey', args),
+  getProviderConfig: () => ipcRenderer.invoke('settings:getProviderConfig'),
+  setProviderConfig: (cfg) => ipcRenderer.invoke('settings:setProviderConfig', cfg),
+  getLlmStatus: () => ipcRenderer.invoke('llm:getStatus'),
 
   // Chat history
   getChatHistory: () => ipcRenderer.invoke('chat:getHistory'),
@@ -38,6 +41,7 @@ contextBridge.exposeInMainWorld('perch', {
   onTasksUpdated: (callback) => ipcRenderer.on('tasks:updated', (_e, data) => callback(data)),
   onPanelShow: (callback) => ipcRenderer.on('panel:doShow', (_e) => callback()),
   onPanelHide: (callback) => ipcRenderer.on('panel:doHide', (_e) => callback()),
+  onLlmStatus: (callback) => ipcRenderer.on('llm:status', (_e, status) => callback(status)),
 
   // Cleanup
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),

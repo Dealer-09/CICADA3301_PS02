@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Perch</title>
+  <title>Niro</title>
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
       <div id="header">
         <div id="header-title">
           <div class="header-dot"></div>
-          <h1>Perch</h1>
+          <h1>Niro</h1>
         </div>
         <div id="header-actions">
           <button class="header-btn" id="btn-clear" title="Clear chat">
@@ -40,38 +40,39 @@
         </div>
       </div>
 
+      <!-- Chat Area -->
+      <div id="chat-area">
+        <div id="empty-state" class="hidden">
+          <div class="empty-icon">🐦</div>
+          <p>Hey! I'm <strong>Niro</strong>, your desktop AI agent.<br>I can open apps, run commands, set timers, and more.</p>
+        </div>
+      </div>
+
       <!-- Input Area -->
       <div id="input-area">
         <div id="input-container">
-          <input type="text" id="chat-input" placeholder="Ask Perch anything..." autocomplete="off" spellcheck="false">
+          <button id="add-btn" title="Add">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <input type="text" id="chat-input" placeholder="Message your Twin..." autocomplete="off" spellcheck="false">
+          <button id="mic-btn" title="Voice input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+            </svg>
+          </button>
           <button id="send-btn" title="Send">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
             </svg>
           </button>
           <button id="stop-btn" class="hidden" title="Stop">■</button>
         </div>
-      </div>
-
-      <!-- Chat Area -->
-      <div id="chat-area">
-        <div id="empty-state">
-          <div class="empty-icon">🐦</div>
-          <p>Hey! I'm <strong>Perch</strong>, your desktop AI agent.<br>I can open apps, run commands, set timers, and more.</p>
-        </div>
-      </div>
-
-      <!-- Divider -->
-      <div class="divider">
-        <div class="divider-line"></div>
-        <span class="divider-text">Quick Tasks</span>
-        <div class="divider-line"></div>
-      </div>
-
-      <!-- Task Grid -->
-      <div id="task-area">
-        <div id="task-grid"></div>
       </div>
     </div>
   </div>
@@ -80,10 +81,53 @@
   <div id="settings-overlay">
     <div id="settings-modal">
       <h2>⚙️ Settings</h2>
+
+      <!-- Provider Selector -->
       <div class="setting-group">
-        <label>Groq API Key</label>
-        <input type="password" id="settings-api-key" placeholder="gsk_...">
+        <label>AI Provider</label>
+        <div class="provider-tabs" id="provider-tabs">
+          <button class="provider-tab active" data-provider="groq">☁️ Groq</button>
+          <button class="provider-tab" data-provider="local">🏠 Ollama</button>
+          <button class="provider-tab" data-provider="local-embedded">📦 Embedded (No API)</button>
+        </div>
       </div>
+
+      <!-- Local Status (Progress bar for download) -->
+      <div id="local-status-container" class="hidden">
+        <div class="local-status-header">
+          <span id="local-status-msg">Initializing local model...</span>
+          <span id="local-status-pct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="local-status-bar" class="progress-bar-fill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Groq section (visible when provider = groq) -->
+      <div id="section-groq" class="provider-section">
+        <div class="setting-group">
+          <label>Groq API Key</label>
+          <input type="password" id="settings-api-key" placeholder="gsk_...">
+        </div>
+      </div>
+
+      <!-- Local section (visible when provider = local) -->
+      <div id="section-local" class="provider-section hidden">
+        <div class="setting-group">
+          <label>Base URL <span class="hint">(Ollama, LiteLLM, etc.)</span></label>
+          <input type="text" id="settings-local-base-url" placeholder="http://localhost:11434/v1">
+        </div>
+        <div class="setting-group">
+          <label>Model Name</label>
+          <input type="text" id="settings-local-model" placeholder="llama3">
+        </div>
+        <div class="local-hint">
+          <span>💡</span>
+          <span>Start Ollama with <code>ollama serve</code> and pull a model first:<br><code>ollama pull llama3</code></span>
+        </div>
+      </div>
+
+      <!-- Common settings -->
       <div class="setting-group">
         <label>Hover Delay (ms)</label>
         <input type="text" id="settings-hover-delay" placeholder="800">
@@ -95,7 +139,7 @@
         </div>
       </div>
       <div class="settings-actions">
-        <button class="btn-danger" id="settings-quit">Quit Perch</button>
+        <button class="btn-danger" id="settings-quit">Quit Niro</button>
         <button class="btn-secondary" id="settings-cancel">Cancel</button>
         <button class="btn-primary" id="settings-save">Save</button>
       </div>

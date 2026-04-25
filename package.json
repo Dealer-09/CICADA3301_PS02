@@ -1,23 +1,32 @@
 {
-  "name": "perch",
+  "name": "niro",
   "version": "1.0.0",
-  "description": "Perch — A lightweight Windows desktop AI agent that lives at the top of your screen",
+  "description": "Niro — A lightweight Windows desktop AI agent that lives at the top of your screen",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "start": "electron .",
     "dev": "nodemon --exec electron . --watch main.js --watch preload.js --watch agent.js --watch tools.js --watch renderer",
     "build": "electron-builder",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "electron-rebuild -f -w node-llama-cpp"
   },
-  "keywords": ["electron", "ai-agent", "desktop", "windows", "groq"],
+  "keywords": [
+    "electron",
+    "ai-agent",
+    "desktop",
+    "windows",
+    "groq"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
     "electron-store": "^8.2.0",
     "groq-sdk": "^0.5.0",
+    "node-llama-cpp": "^3.18.1",
     "node-notifier": "^10.0.1",
+    "playwright": "^1.59.1",
     "screenshot-desktop": "^1.15.0",
     "uuid": "^9.0.1"
   },
@@ -25,25 +34,28 @@
     "@jitsi/robotjs": "^0.6.13"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "nodemon": "^3.1.14"
   },
   "build": {
-    "appId": "com.perch.agent",
-    "productName": "Perch",
+    "appId": "com.niro.agent",
+    "productName": "Niro",
     "files": [
       "main.js",
-      "preload.js",
+      "preload.cjs",
       "agent.js",
       "tools.js",
-      "renderer/**",
-      "assets/**",
+      "renderer/",
+      "assets/",
+      "node_modules/",
       ".env"
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "build_assets/icon.png",
+      "signing": false
     },
     "nsis": {
       "oneClick": false,

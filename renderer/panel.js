@@ -1,4 +1,4 @@
-// panel.js — Perch panel renderer logic
+// panel.js — Niro panel renderer logic
 (function () {
   'use strict';
 
@@ -18,13 +18,43 @@
   const btnClose = document.getElementById('btn-close');
 
   // Settings modal
-  const settingsOverlay = document.getElementById('settings-overlay');
-  const settingsApiKey = document.getElementById('settings-api-key');
+  const settingsOverlay    = document.getElementById('settings-overlay');
+  const settingsApiKey     = document.getElementById('settings-api-key');
+  const settingsLocalBase  = document.getElementById('settings-local-base-url');
+  const settingsLocalModel = document.getElementById('settings-local-model');
   const settingsHoverDelay = document.getElementById('settings-hover-delay');
-  const settingsAutostart = document.getElementById('settings-autostart');
-  const settingsSave = document.getElementById('settings-save');
-  const settingsCancel = document.getElementById('settings-cancel');
-  const settingsQuit = document.getElementById('settings-quit');
+  const settingsAutostart  = document.getElementById('settings-autostart');
+  const settingsSave       = document.getElementById('settings-save');
+  const settingsCancel     = document.getElementById('settings-cancel');
+  const settingsQuit       = document.getElementById('settings-quit');
+  const sectionGroq        = document.getElementById('section-groq');
+  const sectionLocal       = document.getElementById('section-local');
+  const providerTabs       = document.getElementById('provider-tabs');
+  const localStatusContainer = document.getElementById('local-status-container');
+  const localStatusMsg     = document.getElementById('local-status-msg');
+  const localStatusPct     = document.getElementById('local-status-pct');
+  const localStatusBar     = document.getElementById('local-status-bar');
+
+  let activeProvider = 'groq'; // tracks what's currently selected in settings modal
+  let currentStreamingMsg = null;
+
+  // Provider tab toggle
+  providerTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.provider-tab');
+    if (!tab) return;
+    activeProvider = tab.dataset.provider;
+    providerTabs.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    sectionGroq.classList.toggle('hidden', activeProvider !== 'groq');
+    sectionLocal.classList.toggle('hidden', activeProvider !== 'local');
+    // Hide local status when switching away from local-embedded (or if it's already ready)
+    if (activeProvider !== 'local-embedded') {
+      localStatusContainer.classList.add('hidden');
+    } else {
+      // Re-check status if switching to local-embedded
+      updateLlmStatus();
+    }
+  });
 
   let isRunning = false;
 
@@ -34,19 +64,19 @@
   const panel = document.getElementById('panel');
 
   panel.addEventListener('mouseenter', () => {
-    window.perch.mouseEnteredPanel();
+    window.niro.mouseEnteredPanel();
   });
 
   panel.addEventListener('mouseleave', () => {
-    window.perch.mouseLeftPanel();
+    window.niro.mouseLeftPanel();
   });
 
   // Listen for show/hide commands from main process
-  window.perch.onPanelShow(() => {
+  window.niro.onPanelShow(() => {
     panelWrapper.classList.add('visible');
   });
 
-  window.perch.onPanelHide(() => {
+  window.niro.onPanelHide(() => {
     panelWrapper.classList.remove('visible');
   });
 
@@ -107,11 +137,12 @@
     if (!text || isRunning) return;
 
     chatInput.value = '';
+    currentStreamingMsg = null;
     addMessage('user', text);
     startRunning();
 
     try {
-      await window.perch.runAgent(text);
+      await window.niro.runAgent(text);
     } catch (err) {
       addMessage('error', err.message || 'Failed to run agent');
       stopRunning();
@@ -148,21 +179,28 @@
   sendBtn.addEventListener('click', sendMessage);
 
   stopBtn.addEventListener('click', async () => {
-    await window.perch.stopAgent();
+    await window.niro.stopAgent();
     stopRunning();
   });
 
   // ─────────────────────────────────────────────
   // Agent Event Listeners
   // ─────────────────────────────────────────────
-  window.perch.onChunk((data) => {
+  window.niro.onChunk((data) => {
     removeThinkingIndicator();
     setStatus('');
-    addMessage('assistant', data.text);
+    
+    if (currentStreamingMsg) {
+      currentStreamingMsg.textContent += data.text;
+      chatArea.scrollTop = chatArea.scrollHeight;
+    } else {
+      currentStreamingMsg = addMessage('assistant', data.text);
+    }
   });
 
-  window.perch.onTool((data) => {
+  window.niro.onTool((data) => {
     setStatus('executing');
+    currentStreamingMsg = null;
     const inputStr = data.input ? Object.values(data.input).join(', ') : '';
     const display = inputStr ? `${inputStr.substring(0, 40)}${inputStr.length > 40 ? '...' : ''}` : '';
     addMessage('tool-status',
@@ -170,17 +208,43 @@
     );
   });
 
-  window.perch.onDone(() => {
+  window.niro.onDone(() => {
+    currentStreamingMsg = null;
     stopRunning();
   });
 
-  window.perch.onError((data) => {
+  window.niro.onError((data) => {
     removeThinkingIndicator();
+    currentStreamingMsg = null;
     addMessage('error', data.message);
     stopRunning();
     setStatus('error');
     setTimeout(() => setStatus(''), 3000);
   });
+
+  window.niro.onLlmStatus((status) => {
+    handleLlmStatus(status);
+  });
+
+  function handleLlmStatus(status) {
+    if (status.state === 'ready') {
+      localStatusContainer.classList.add('hidden');
+      return;
+    }
+    
+    // Only show progress if we are actually using local-embedded
+    if (activeProvider === 'local-embedded') {
+      localStatusContainer.classList.remove('hidden');
+      localStatusMsg.textContent = status.message || 'Processing...';
+      localStatusPct.textContent = `${status.progress}%`;
+      localStatusBar.style.width = `${status.progress}%`;
+    }
+  }
+
+  async function updateLlmStatus() {
+    const status = await window.niro.getLlmStatus();
+    handleLlmStatus(status);
+  }
 
   // Handle task run instruction (from main process when a task button is clicked via IPC)
   // This is triggered when tasks:run sends instruction back to renderer
@@ -216,10 +280,11 @@
 
   async function runTaskInstruction(instruction) {
     if (isRunning) return;
+    currentStreamingMsg = null;
     addMessage('user', instruction);
     startRunning();
     try {
-      await window.perch.runAgent(instruction);
+      await window.niro.runAgent(instruction);
     } catch (err) {
       addMessage('error', err.message);
       stopRunning();
@@ -227,12 +292,12 @@
   }
 
   async function deleteTask(taskId) {
-    await window.perch.deleteTask(taskId);
-    const tasks = await window.perch.getTasks();
+    await window.niro.deleteTask(taskId);
+    const tasks = await window.niro.getTasks();
     renderTasks(tasks);
   }
 
-  window.perch.onTasksUpdated((data) => {
+  window.niro.onTasksUpdated((data) => {
     renderTasks(data.tasks);
   });
 
@@ -240,7 +305,7 @@
   // Header Buttons
   // ─────────────────────────────────────────────
   btnClear.addEventListener('click', async () => {
-    await window.perch.clearChatHistory();
+    await window.niro.clearChatHistory();
     chatArea.innerHTML = '';
     emptyState.classList.remove('hidden');
     chatArea.appendChild(emptyState);
@@ -248,18 +313,36 @@
   });
 
   btnClose.addEventListener('click', () => {
-    window.perch.hidePanel();
+    window.niro.hidePanel();
   });
 
   // ─────────────────────────────────────────────
   // Settings Modal
   // ─────────────────────────────────────────────
   btnSettings.addEventListener('click', async () => {
-    const settings = await window.perch.getSettings();
-    const maskedKey = await window.perch.getApiKey();
+    const [settings, maskedKey, providerCfg] = await Promise.all([
+      window.niro.getSettings(),
+      window.niro.getApiKey(),
+      window.niro.getProviderConfig(),
+    ]);
 
+    // Set provider tab
+    activeProvider = providerCfg.provider || 'groq';
+    providerTabs.querySelectorAll('.provider-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.provider === activeProvider);
+    });
+    sectionGroq.classList.toggle('hidden', activeProvider !== 'groq');
+    sectionLocal.classList.toggle('hidden', activeProvider !== 'local');
+    
+    if (activeProvider === 'local-embedded') {
+      updateLlmStatus();
+    }
+
+    // Pre-fill fields
     settingsApiKey.value = '';
     settingsApiKey.placeholder = maskedKey || 'gsk_...';
+    settingsLocalBase.value  = providerCfg.localBaseUrl || 'http://localhost:11434/v1';
+    settingsLocalModel.value = providerCfg.localModel   || 'llama3';
     settingsHoverDelay.value = settings.hoverDelay || 800;
 
     if (settings.autoStart) {
@@ -280,7 +363,7 @@
   });
 
   settingsQuit.addEventListener('click', () => {
-    window.perch.quitApp();
+    window.niro.quitApp();
   });
 
   settingsOverlay.addEventListener('click', (e) => {
@@ -290,19 +373,24 @@
   });
 
   settingsSave.addEventListener('click', async () => {
-    // Save API key if changed
+    // Save provider config
+    await window.niro.setProviderConfig({
+      provider:     activeProvider,
+      localBaseUrl: settingsLocalBase.value.trim()  || 'http://localhost:11434/v1',
+      localModel:   settingsLocalModel.value.trim() || 'llama3',
+    });
+
+    // Save Groq API key if changed (only relevant when provider = groq)
     const newKey = settingsApiKey.value.trim();
-    if (newKey) {
-      await window.perch.setApiKey(newKey);
-    }
+    if (newKey) await window.niro.setApiKey({ key: newKey });
 
     // Save hover delay
     const delay = parseInt(settingsHoverDelay.value) || 800;
-    await window.perch.setSettings('hoverDelay', delay);
+    await window.niro.setSettings('hoverDelay', delay);
 
     // Save autostart
     const autoStart = settingsAutostart.classList.contains('on');
-    await window.perch.setSettings('autoStart', autoStart);
+    await window.niro.setSettings('autoStart', autoStart);
 
     settingsOverlay.classList.remove('visible');
   });
@@ -312,11 +400,11 @@
   // ─────────────────────────────────────────────
   async function init() {
     // Load tasks
-    const tasks = await window.perch.getTasks();
+    const tasks = await window.niro.getTasks();
     renderTasks(tasks);
 
     // Load chat history
-    const history = await window.perch.getChatHistory();
+    const history = await window.niro.getChatHistory();
     if (history && history.length > 0) {
       emptyState.classList.add('hidden');
       history.forEach(msg => {
