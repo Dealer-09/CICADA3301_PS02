@@ -1,0 +1,38 @@
+[
+  {
+    "id": "1",
+    "name": "Open VS Code",
+    "subtitle": "Code editor",
+    "icon": "💻",
+    "type": "app",
+    "target": "code",
+    "category": "Apps"
+  },
+  {
+    "id": "2",
+    "name": "Open GitHub",
+    "subtitle": "github.com",
+    "icon": "🌐",
+    "type": "website",
+    "target": "https://github.com",
+    "category": "Websites"
+  },
+  {
+    "id": "3",
+    "name": "Start a 25-min timer",
+    "subtitle": "Pomodoro",
+    "icon": "⏲️",
+    "type": "timer",
+    "target": 25,
+    "category": "Timers"
+  },
+  {
+    "id": "4",
+    "name": "List current directory",
+    "subtitle": "ls -la",
+    "icon": "셸",
+    "type": "command",
+    "target": "ls -la",
+    "category": "Commands"
+  }
+]
