@@ -16,13 +16,17 @@ contextBridge.exposeInMainWorld('niro', {
   setSettings: (key, value) => ipcRenderer.invoke('settings:set', { key, value }),
   getApiKey: () => ipcRenderer.invoke('settings:getApiKey'),
   setApiKey: (args) => ipcRenderer.invoke('settings:setApiKey', args),
-  getProviderConfig: () => ipcRenderer.invoke('settings:getProviderConfig'),
-  setProviderConfig: (cfg) => ipcRenderer.invoke('settings:setProviderConfig', cfg),
-  getLlmStatus: () => ipcRenderer.invoke('llm:getStatus'),
 
-  // Chat history
+  // Browser Use (AI-powered real Chrome automation)
+  browserRunTask: (task) => ipcRenderer.invoke('browser:run', task),
+  browserNavigate: (url) => ipcRenderer.invoke('browser:navigate', url),
+  currentPage: () => ipcRenderer.invoke('browser:page'),
+  browserReady: () => ipcRenderer.invoke('browser:ready'),
+
+  // Chat history & Audio
   getChatHistory: () => ipcRenderer.invoke('chat:getHistory'),
   clearChatHistory: () => ipcRenderer.invoke('chat:clear'),
+  transcribeAudio: (buffer) => ipcRenderer.invoke('audio:transcribe', buffer),
 
   // Panel visibility
   showPanel: () => ipcRenderer.send('panel:show'),
@@ -44,7 +48,6 @@ contextBridge.exposeInMainWorld('niro', {
   onTasksUpdated: (callback) => ipcRenderer.on('tasks:updated', (_e, data) => callback(data)),
   onPanelShow: (callback) => ipcRenderer.on('panel:doShow', (_e) => callback()),
   onPanelHide: (callback) => ipcRenderer.on('panel:doHide', (_e) => callback()),
-  onLlmStatus: (callback) => ipcRenderer.on('llm:status', (_e, status) => callback(status)),
 
   // Cleanup
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
