@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from "react";
-import mascot1 from "./assets/mascot1.svg";
-import mascot2 from "./assets/mascot2.svg";
-
+import { useState, useEffect} from "react";
+import Mascot from "./components/Mascot";
+import { ProgressBar } from "./components/ProgressBar";
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -158,14 +157,6 @@ const STYLES = `
 type Frame = "hero" | "about" | "building" | "ready" | "done";
 interface UserInfo { email: string; name: string; role: string; }
 
-// Which mascot to use per frame
-const MASCOT_MAP: Record<Frame, string> = {
-  hero:     mascot1,
-  about:    mascot2,
-  building: mascot1,
-  ready:    mascot2,
-  done:     mascot1,
-};
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────────
 const IconSparkle = () => (
@@ -202,67 +193,6 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button className="back-btn" onClick={onClick}>
       <IconBack /> Back
     </button>
-  );
-}
-
-// ── Mascot ─────────────────────────────────────────────────────────────────────
-function Mascot({ frame }: { frame: Frame }) {
-  const [phase, setPhase] = useState<"enter" | "swap" | "idle">("enter");
-  const prevFrame = useRef<Frame>(frame);
-
-  useEffect(() => {
-    if (prevFrame.current !== frame) {
-      setPhase("swap");
-      prevFrame.current = frame;
-      const t = setTimeout(() => setPhase("idle"), 600);
-      return () => clearTimeout(t);
-    } else {
-      setPhase("enter");
-      const t = setTimeout(() => setPhase("idle"), 1400);
-      return () => clearTimeout(t);
-    }
-  }, [frame]);
-
-  const src = MASCOT_MAP[frame];
-  const className = phase === "enter" ? "mascot-enter" : phase === "swap" ? "mascot-swap" : "mascot-idle";
-
-  return (
-    <div style={{
-      position: "relative",
-      display: "flex",
-      alignItems: "flex-start",       // push mascot UP
-      justifyContent: "flex-start",   // push mascot LEFT
-      height: "100%",
-      paddingTop: "20px",
-      paddingLeft: "0px",
-    }}>
-      <img
-        key={frame}                    // force re-mount on frame change for animation reset
-        src={src}
-        alt="Niro"
-        className={className}
-        style={{
-          width: "min(52vh, 40vw)",
-          maxWidth: "480px",
-          minWidth: "260px",
-          // filter: "drop-shadow(0 0 60px rgba(34,197,94,0.45)) drop-shadow(0 0 20px rgba(34,197,94,0.3))",
-          transformOrigin: "bottom center",
-          position: "relative",
-          zIndex: 2,
-        }}
-      />
-    </div>
-  );
-}
-
-// ── Progress ───────────────────────────────────────────────────────────────────
-const FRAMES: Frame[] = ["hero", "about", "building", "ready", "done"];
-function ProgressBar({ frame }: { frame: Frame }) {
-  const pct = (FRAMES.indexOf(frame) / (FRAMES.length - 1)) * 100;
-  return (
-    <div className="progress-track">
-      <div className="progress-fill" style={{ width: `${pct}%` }} />
-    </div>
   );
 }
 
@@ -428,7 +358,7 @@ function ReadyFrame({ name, onNext, onBack }: { name: string; onNext: () => void
         {name ? `${name}, what` : "What"} did I say? Your buddy is prepped — just download the app to get started.
       </p>
       <div className="fade-up" style={{ animationDelay: "0.25s", opacity: 0, display: "flex", gap: "8px" }}>
-        {["macOS", "Windows", "Linux"].map(p => (
+        {["Windows", "Linux"].map(p => (
           <button key={p} onClick={() => setPlat(p)} style={{
             background: plat === p ? "rgba(74,222,128,0.12)" : "rgba(255,255,255,0.04)",
             border: `1.5px solid ${plat === p ? "rgba(74,222,128,0.45)" : "rgba(255,255,255,0.08)"}`,
@@ -513,7 +443,7 @@ export default function App() {
           ))}
         </div>
       </nav>
-
+    
       {/* BODY: mascot left, content right */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", flex: 1, minHeight: 0, position: "relative", zIndex: 10 }}>
 
