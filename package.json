@@ -46,6 +46,7 @@
       "preload.cjs",
       "agent.js",
       "tools.js",
+      "local-llm.js",
       "renderer/",
       "assets/",
       "node_modules/",

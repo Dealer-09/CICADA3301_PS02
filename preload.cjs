@@ -23,9 +23,10 @@ contextBridge.exposeInMainWorld('niro', {
   currentPage: () => ipcRenderer.invoke('browser:page'),
   browserReady: () => ipcRenderer.invoke('browser:ready'),
 
-  // Chat history
+  // Chat history & Audio
   getChatHistory: () => ipcRenderer.invoke('chat:getHistory'),
   clearChatHistory: () => ipcRenderer.invoke('chat:clear'),
+  transcribeAudio: (buffer) => ipcRenderer.invoke('audio:transcribe', buffer),
 
   // Panel visibility
   showPanel: () => ipcRenderer.send('panel:show'),

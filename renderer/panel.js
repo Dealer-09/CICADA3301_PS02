@@ -10,6 +10,7 @@
   const chatInput = document.getElementById('chat-input');
   const sendBtn = document.getElementById('send-btn');
   const stopBtn = document.getElementById('stop-btn');
+  const micBtn = document.getElementById('mic-btn');
   const chatArea = document.getElementById('chat-area');
   const emptyState = document.getElementById('empty-state');
   const taskGrid = document.getElementById('task-grid');
@@ -181,6 +182,70 @@
   stopBtn.addEventListener('click', async () => {
     await window.niro.stopAgent();
     stopRunning();
+  });
+
+  // ─────────────────────────────────────────────
+  // Voice Input (MediaRecorder)
+  // ─────────────────────────────────────────────
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+
+  micBtn.addEventListener('click', async () => {
+    if (isRecording) {
+      mediaRecorder.stop();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        
+        // Stop all tracks to release the mic
+        stream.getTracks().forEach(track => track.stop());
+
+        micBtn.classList.remove('recording');
+        isRecording = false;
+        
+        // Show status
+        chatInput.disabled = true;
+        chatInput.placeholder = 'Transcribing...';
+        setStatus('thinking');
+
+        try {
+          const transcription = await window.niro.transcribeAudio(arrayBuffer);
+          chatInput.value = transcription.text || transcription;
+        } catch (err) {
+          addMessage('error', 'Transcription failed: ' + err.message);
+        } finally {
+          chatInput.disabled = false;
+          chatInput.placeholder = 'Message your Twin...';
+          chatInput.focus();
+          setStatus('');
+        }
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      
+      // Give text feedback
+      chatInput.placeholder = '● Recording... (Click mic to stop)';
+      chatInput.value = '';
+    } catch (err) {
+      addMessage('error', 'Microphone access denied: ' + err.message);
+    }
   });
 
   // ─────────────────────────────────────────────

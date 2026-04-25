@@ -14,7 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const require = createRequire(import.meta.url);
 const Store = require('electron-store');
 
-import { initClient, runAgent, stopAgent } from './agent.js';
+import { initClient, runAgent, stopAgent, transcribeAudioBuffer } from './agent.js';
 import { setStore, setMainWindow } from './tools.js';
 import * as browser from './tools/browser.js';
 
@@ -418,3 +418,19 @@ ipcMain.handle('chat:clear', () => {
   store.set('chatHistory', []);
   return [];
 });
+
+// ─────────────────────────────────────────────────
+// IPC: Audio Transcription
+// ─────────────────────────────────────────────────
+ipcMain.handle('audio:transcribe', async (event, buffer) => {
+  try {
+    const apiKey = store.get('apiKey') || process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error('No Groq API key found. Please add one in Settings.');
+    const text = await transcribeAudioBuffer(buffer, apiKey);
+    return text;
+  } catch (error) {
+    console.error('[Niro] Transcription error:', error.message);
+    throw error;
+  }
+});
+
